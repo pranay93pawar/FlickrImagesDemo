@@ -18,9 +18,9 @@ https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key={yourK
 
 Replace {yourSearchQuery} with search keyword.
 
-Generate your api_key [here] (https://www.flickr.com/services/api/misc.api_keys.html)
+Generate your api_key [here](https://www.flickr.com/services/api/misc.api_keys.html)
 
-More documentation about the search endpoint can be found [here] (https:// www.flickr.com/services/api/explore/flickr.photos.search)
+More documentation about the search endpoint can be found [here](https:// www.flickr.com/services/api/explore/flickr.photos.search)
 
 
 It returns a JSON object with a list of Flickr photo models. Each Flickr photo model is defined as below:

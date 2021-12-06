@@ -175,7 +175,7 @@ extension FlickrImagesViewController: UISearchBarDelegate {
         searchBar.setShowsCancelButton(false, animated: true)
         searchBar.resignFirstResponder()
         
-        if let searchedText = searchBar.text{
+        if let searchedText = searchBar.text, searchedText != "" {
             enterBusyUI()
             viewModel.searchFlickrImages(searchedText)
         }

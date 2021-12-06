@@ -76,6 +76,8 @@ class FilckrImagesListViewModel {
                     self.model?.setTotal(total)
                     self.delegate?.modelUpdated()
                 }
+            } else {
+                self.delegate?.noDataFound()
             }
             
         }
@@ -108,6 +110,8 @@ class FilckrImagesListViewModel {
                     self.delegate?.modelUpdated()
                     self.isContentLoading = false
                 }
+            } else {
+                self.delegate?.noDataFound()
             }
             
         }

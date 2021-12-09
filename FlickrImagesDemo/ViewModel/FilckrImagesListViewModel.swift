@@ -50,10 +50,12 @@ class FilckrImagesListViewModel {
     
     init(aPINetworkManager: APINetworkManagerProtocol) {
         self.aPINetworkManager = aPINetworkManager
+        cachedImages.totalCostLimit = 20 * 1024 * 1024
     }
     
     func clearImageCache() {
-        cachedImages.removeAllObjects()
+        
+        //cachedImages.removeAllObjects()
     }
     
     func searchFlickrImages(_ searchText: String) {
@@ -62,22 +64,31 @@ class FilckrImagesListViewModel {
         
         let currentPage = 1
         
-        aPINetworkManager.searchFlickrImages(currentPage, searchText: searchText) { (photosResponse, errorString) in
+        aPINetworkManager.searchFlickrImages(currentPage, searchText: searchText) { [weak self] (photosResponse, errorString) in
+            
+            guard let strongSelf = self else {
+                return
+            }
             
             if let photos = photosResponse, let photoList = photos.photo, let currentPage = photos.page, let maxPage = photos.pages, let total = photos.total {
                 
-                if self.model == nil {
-                    self.model = FilckrImagesList(filckrImages: photoList, searchText: searchText, currentPage: currentPage, maxPage: maxPage, total: total)
+                if var model = strongSelf.model {
+                    
+                    model.setFilckrImages(photoList)
+                    model.setSearchText(searchText)
+                    model.setCurrentPage(currentPage)
+                    model.setMaxPage(maxPage)
+                    model.setTotal(total)
+                    strongSelf.delegate?.modelUpdated()
+                    
                 } else {
-                    self.model?.setFilckrImages(photoList)
-                    self.model?.setSearchText(searchText)
-                    self.model?.setCurrentPage(currentPage)
-                    self.model?.setMaxPage(maxPage)
-                    self.model?.setTotal(total)
-                    self.delegate?.modelUpdated()
+                    strongSelf.model = FilckrImagesList(filckrImages: photoList, searchText: searchText, currentPage: currentPage, maxPage: maxPage, total: total)
+                    
+                    strongSelf.delegate?.modelUpdated()
+
                 }
             } else {
-                self.delegate?.noDataFound()
+                strongSelf.delegate?.noDataFound()
             }
             
         }
@@ -86,33 +97,44 @@ class FilckrImagesListViewModel {
     
     func getImagesInNextPage() {
         
-        let nextPage = (model?.currentPage ?? 0) + 1
+        guard let strongModel = model else {
+            self.delegate?.noDataFound()
+            return
+        }
         
-        if let maxPage = model?.maxPage, maxPage < nextPage {
+        let nextPage = strongModel.currentPage + 1
+        
+        if strongModel.maxPage < nextPage {
             
             delegate?.noDataFound()
             return
         }
         
-        let searchText = model?.searchText ?? "kitten"
+        let searchText = strongModel.searchText
         
         isContentLoading = true
         
-        aPINetworkManager.searchFlickrImages(nextPage, searchText: searchText) { (photosResponse, errorString) in
+        aPINetworkManager.searchFlickrImages(nextPage, searchText: searchText) { [weak self] (photosResponse, errorString) in
             
-            if let photos = photosResponse, let photoList = photos.photo, let currentPage = photos.page, let maxPage = photos.pages {
-                
-                if self.model != nil {
-                    
-                    self.model?.appendFilckrImages(photoList)
-                    self.model?.setCurrentPage(currentPage)
-                    self.model?.setMaxPage(maxPage)
-                    self.delegate?.modelUpdated()
-                    self.isContentLoading = false
-                }
-            } else {
-                self.delegate?.noDataFound()
+            guard let strongSelf = self else {
+                return
             }
+            
+            guard let photos = photosResponse, let photoList = photos.photo, let currentPage = photos.page, let maxPage = photos.pages else {
+                strongSelf.delegate?.noDataFound()
+                return
+            }
+            
+            guard var model = strongSelf.model else {
+                strongSelf.delegate?.noDataFound()
+                return
+            }
+            
+            model.appendFilckrImages(photoList)
+            model.setCurrentPage(currentPage)
+            model.setMaxPage(maxPage)
+            strongSelf.delegate?.modelUpdated()
+            strongSelf.isContentLoading = false
             
         }
         
@@ -131,7 +153,16 @@ class FilckrImagesListViewModel {
                 } else {
                     
                     if let image = image {
-                        self.cachedImages.setObject(image, forKey: imageURL as NSURL)
+                        
+                        if let data = image.pngData() {
+                            
+                            self.cachedImages.setObject(image, forKey: imageURL as NSURL, cost: data.count)
+
+                        } else {
+                            self.cachedImages.setObject(image, forKey: imageURL as NSURL)
+
+                        }
+                        
                         completion(image)
                     } else {
                         completion(nil)
